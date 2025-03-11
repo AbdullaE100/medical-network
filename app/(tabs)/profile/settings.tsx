@@ -1,29 +1,59 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, Pressable, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TextInput, Pressable, Alert, Platform } from 'react-native';
+import { Lock, MessageCircle, Shield, HelpCircle, LogOut, Camera } from 'lucide-react-native';
+import { Switch } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, Lock, MessageCircle, Shield, HelpCircle, LogOut } from 'lucide-react-native';
 import { useProfileStore } from '@/stores/useProfileStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 import { ErrorMessage } from '@/components/ErrorMessage';
+import * as ImagePicker from 'expo-image-picker';
+
+type SettingOption = {
+  label: string;
+  type: 'toggle' | 'select' | 'action';
+  value?: boolean;
+  description?: string;
+  key?: string;
+  action?: () => void;
+};
 
 type SettingSection = {
   title: string;
   icon: any;
-  options: {
-    label: string;
-    type: 'toggle' | 'select' | 'action';
-    value?: boolean;
-    description?: string;
-    key?: string;
-    action?: () => void;
-  }[];
+  options: SettingOption[];
 };
 
 export default function Settings() {
   const router = useRouter();
-  const { settings, isLoading, error, updateSettings } = useProfileStore();
+  const { profile, settings, isLoading, error, updateSettings, updateProfile } = useProfileStore();
   const { signOut } = useAuthStore();
+
+  const handleImagePick = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Please grant camera roll permissions to change your photo.');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        const file = result.assets[0];
+        await updateProfile({ avatar_url: file.uri });
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update profile photo');
+    }
+  };
 
   const handleToggle = async (key: string, value: boolean) => {
     try {
@@ -112,6 +142,19 @@ export default function Settings() {
         />
       )}
 
+      <View style={styles.profileSection}>
+        <Image 
+          source={{ 
+            uri: profile?.avatar_url || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400'
+          }} 
+          style={styles.avatar} 
+        />
+        <Pressable style={styles.changePhotoButton} onPress={handleImagePick}>
+          <Camera size={20} color="#FFFFFF" />
+          <Text style={styles.changePhotoText}>Change Photo</Text>
+        </Pressable>
+      </View>
+
       {SETTINGS.map((section) => (
         <View key={section.title} style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -178,9 +221,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
-  section: {
+  profileSection: {
+    alignItems: 'center',
+    padding: 24,
     backgroundColor: '#FFFFFF',
-    marginTop: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 16,
+  },
+  changePhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0066CC',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 8,
+  },
+  changePhotoText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+  },
+  section: {
+    marginTop: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -197,12 +269,12 @@ const styles = StyleSheet.create({
   },
   sectionContent: {
     padding: 16,
-    gap: 16,
   },
   settingItem: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
   },
   settingInfo: {
     flex: 1,
@@ -220,7 +292,7 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   selectButton: {
-    backgroundColor: '#F0F2F5',
+    backgroundColor: '#F0F0F0',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -228,10 +300,10 @@ const styles = StyleSheet.create({
   selectButtonText: {
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
-    color: '#666666',
+    color: '#1A1A1A',
   },
   actionButton: {
-    backgroundColor: '#F0F2F5',
+    backgroundColor: '#F0F0F0',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -239,33 +311,33 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
-    color: '#0066CC',
+    color: '#1A1A1A',
   },
   helpSection: {
-    backgroundColor: '#FFFFFF',
-    marginTop: 8,
+    marginTop: 24,
+    marginBottom: 32,
+    gap: 16,
     padding: 16,
-    gap: 12,
   },
   helpButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 12,
-    backgroundColor: '#F0F2F5',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
     borderRadius: 8,
   },
   helpButtonText: {
     fontSize: 16,
     fontFamily: 'Inter_500Medium',
-    color: '#666666',
+    color: '#1A1A1A',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 12,
-    backgroundColor: '#FFF2F2',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
     borderRadius: 8,
   },
   logoutButtonText: {
